@@ -125,3 +125,72 @@ function UI.Button(parent, label, onClick)
     end
     return btn
 end
+
+-- Rounded shapes (same look as the skilltrees menu). These replace the square Panel/Button above.
+UI.Radius = 6
+
+-- draw.RoundedBox has no outline variant, so the border is a box in the edge colour with the
+-- fill box inset on top of it. Keep the fill opaque or the edge shows through it.
+function UI.RoundBox(x, y, w, h, r, fill, edge, thick)
+    x, y, w, h = math.floor(x), math.floor(y), math.floor(w), math.floor(h)
+    r = math.min(r, math.floor(math.min(w, h) / 2))
+    if edge then
+        thick = thick or 1
+        draw.RoundedBox(r, x, y, w, h, edge)
+        x, y, w, h, r = x + thick, y + thick, w - thick * 2, h - thick * 2, math.max(r - thick, 0)
+    end
+    if fill then draw.RoundedBox(r, x, y, w, h, fill) end
+end
+
+local function cornerInset(r, row)
+    local d = r - row - 0.5
+    return math.ceil(r - math.sqrt(r * r - d * d))
+end
+
+-- Vertical gradient clipped to a rounded rect: the corner rows are drawn as shortened 1px
+-- strips, with the UVs picking the matching slice of the gradient.
+function UI.RoundGradient(x, y, w, h, r, mat, col, roundTop, roundBottom)
+    surface.SetMaterial(mat)
+    surface.SetDrawColor(col)
+    local top = roundTop and r or 0
+    local bot = roundBottom and r or 0
+    for i = 0, top - 1 do
+        local o = cornerInset(r, i)
+        surface.DrawTexturedRectUV(x + o, y + i, w - o * 2, 1, 0, i / h, 1, (i + 1) / h)
+    end
+    surface.DrawTexturedRectUV(x, y + top, w, h - top - bot, 0, top / h, 1, (h - bot) / h)
+    for i = 0, bot - 1 do
+        local o = cornerInset(r, i)
+        local row = h - 1 - i
+        surface.DrawTexturedRectUV(x + o, y + row, w - o * 2, 1, 0, row / h, 1, (row + 1) / h)
+    end
+end
+
+function UI.Panel(w, h, tint, edge, tintAlpha)
+    local r = UI.Radius
+    UI.RoundBox(0, 0, w, h, r, UI.Col.frame, edge or UI.Col.edgeDim)
+    if tint then
+        UI.RoundGradient(1, 1, w - 2, h - 2, r - 1, UI.Mat.gradUp, UI.Alpha(tint, tintAlpha or 60), true, true)
+    end
+end
+
+function UI.Button(parent, label, onClick)
+    local btn = vgui.Create("DButton", parent)
+    btn:SetText("")
+    btn.Label = label
+    btn.DoClick = function(self)
+        if self:GetDisabled() then return end
+        surface.PlaySound("buttons/lightswitch2.wav")
+        onClick(self)
+    end
+    btn.Paint = function(self, w, h)
+        local disabled = self:GetDisabled()
+        local accent = self.Accent or UI.Col.frameEdge
+        UI.RoundBox(0, 0, w, h, 5, disabled and Color(14, 22, 30) or UI.Col.frame, disabled and UI.Col.edgeDim or accent)
+        if not disabled then
+            draw.RoundedBox(4, 1, 1, w - 2, h - 2, UI.Alpha(accent, self:IsHovered() and 70 or 28))
+        end
+        draw.SimpleText(self.Label, "OG_Rank", w / 2, h / 2, disabled and UI.Col.textFaint or UI.Col.text, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+    end
+    return btn
+end
