@@ -93,7 +93,7 @@ function UI.Wrap(text, font, width)
     local lines, line = {}, ""
     for word in string.gmatch(text or "", "%S+") do
         local try = line == "" and word or (line .. " " .. word)
-        if surface.GetTextSize(try) > width and line ~= "" then
+        if (surface.GetTextSize(try) or 0) > width and line ~= "" then
             table.insert(lines, line)
             line = word
         else
